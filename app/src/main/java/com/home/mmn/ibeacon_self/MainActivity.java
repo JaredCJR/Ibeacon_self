@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.content.Context;
 import android.content.Intent;
+import android.os.HandlerThread;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -16,12 +17,17 @@ import android.os.Handler;
 
 public class MainActivity extends ActionBarActivity {
 
+    private String hexScanRecord = "error";
     private int major = -999;
     private int minor =-999;
     private int get_rssi = -999;
     private String get_uuid = "error";
     private BluetoothAdapter mBluetoothAdapter;
     private static final int REQUEST_ENABLE_BT = 2;
+    private double dist = -1;
+    private int txPower = -59;
+    private beacon[] myIbeacon = new beacon[6];//有5個 beacon
+
     private BluetoothAdapter.LeScanCallback mLeScanCallback = new BluetoothAdapter.LeScanCallback() {
         @Override
         public void onLeScan(final BluetoothDevice device, final int rssi, final byte[] scanRecord) {
@@ -31,9 +37,8 @@ public class MainActivity extends ActionBarActivity {
                 if (    ((int) scanRecord[startByte + 2] & 0xff) == 0x02 && //Identifies an iBeacon
                         ((int) scanRecord[startByte + 3] & 0xff) == 0x15) { //Identifies correct data length
                     patternFound = true;
+                    hexScanRecord = bytesToHex(scanRecord);
 
-                    String hexScanRecord = bytesToHex(scanRecord);
-                    Log.v("=====>", "scanRecord:"+hexScanRecord);
 
                     break;
                 }
@@ -55,54 +60,75 @@ public class MainActivity extends ActionBarActivity {
 
                 //Here is your Major value
                 major = (scanRecord[startByte+20] & 0xff) * 0x100 + (scanRecord[startByte+21] & 0xff);
-
                 //Here is your Minor value
                 minor = (scanRecord[startByte+22] & 0xff) * 0x100 + (scanRecord[startByte+23] & 0xff);
                 get_uuid = uuid;
                 get_rssi = rssi;
+                dist = calculateAccuracy(txPower,get_rssi);
 
-                Log.v("=====>", "UUID:"+get_uuid);
-                Log.v("=====>", "major:"+major);
+                myIbeacon[minor] = new beacon(uuid ,major , minor ,txPower , rssi ,dist);
+
+                Log.v("=====>", "hex_scanRecord:" + hexScanRecord);
+                Log.v("=====>", "UUID:"+myIbeacon[minor].get_uuid());
                 Log.v("=====>", "minor:"+minor);
-                Log.v("=====>", "RSSI:"+get_rssi);
+                Log.v("=====>", "RSSI:"+myIbeacon[minor].get_rssi());
+                Log.v("=====>", "distance:"+myIbeacon[minor].get_dist());
             }
         }
     };
+
+    //找到UI工人的經紀人，這樣才能派遣工作  (找到顯示畫面的UI Thread上的Handler)
+    private Handler mUI_Handler = new Handler();
+
+    //宣告特約工人的經紀人
+    private Handler mThreadHandler;
+
+    //宣告特約工人
+    private HandlerThread mThread;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
-        mBluetoothAdapter = bluetoothManager.getAdapter();
-        mBluetoothAdapter.startLeScan(mLeScanCallback);
+        Log.v("=====>", "first scan");
+        find_beacon_thread();
 
 
-        /**
-         * Checks if Bluetooth is enabled on device
-         * Use this within and Activity
-         */
-        if (mBluetoothAdapter == null || !mBluetoothAdapter.isEnabled()) {
-            Intent enableBluetooth = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(enableBluetooth, REQUEST_ENABLE_BT);
-        }
-
-        /**
-         * Stop after 10 seconds
-         */
-        Handler handler = new Handler();
-        handler.postDelayed(new Runnable() {
-
-            @Override
+        new Handler().postDelayed(new Runnable(){
             public void run() {
-                mBluetoothAdapter.stopLeScan(mLeScanCallback);
-                Log.v("=====>", "Stop scan");
+                //do something after 4 sec
+                Log.v("=====>", "finish wait for 4 sec");
+                Log.v("=====>", "second scan");
+                find_beacon_thread();
             }
-        }, 10000);
+        }, 4000);   //4秒
+
+        new Handler().postDelayed(new Runnable(){
+            public void run() {
+                //do something after 4 sec
+                Log.v("=====>", "finish wait for 8 sec");
+                Log.v("=====>", "third scan");
+                find_beacon_thread();
+            }
+        }, 8000);   //4秒
 
 
 
+    }
+
+
+    public void find_beacon_thread()
+    {
+
+        //聘請一個特約工人，有其經紀人派遣其工人做事 (另起一個有Handler的Thread)
+        mThread = new HandlerThread("find_beacons");
+        //讓Worker待命，等待其工作 (開啟Thread)
+        mThread.start();
+        //找到特約工人的經紀人，這樣才能派遣工作 (找到Thread上的Handler)
+        mThreadHandler=new Handler(mThread.getLooper());
+        //請經紀人指派工作名稱 r，給工人做
+        mThreadHandler.post(r1);
     }
 
 
@@ -147,4 +173,77 @@ public class MainActivity extends ActionBarActivity {
     }
 
 
+    //Accuracy here means distance in meters
+    protected static double calculateAccuracy(int txPower, double rssi) {
+        if (rssi == 0) {
+            return -1.0; // if we cannot determine accuracy, return -1.
+        }
+
+        double ratio = rssi*1.0/txPower;
+        if (ratio < 1.0) {
+            return Math.pow(ratio,10);
+        }
+        else {
+            double accuracy =  (0.89976)*Math.pow(ratio,7.7095) + 0.111;
+            return accuracy;
+        }
+    }
+
+    public void find_beacon()
+    {
+        //final BluetoothAdapter mBluetoothAdapter;
+
+        BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
+        mBluetoothAdapter = bluetoothManager.getAdapter();
+        mBluetoothAdapter.startLeScan(mLeScanCallback);
+
+
+        /**
+         * Checks if Bluetooth is enabled on device
+         * Use this within and Activity
+         */
+        if (mBluetoothAdapter == null || !mBluetoothAdapter.isEnabled()) {
+            Intent enableBluetooth = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableBluetooth, REQUEST_ENABLE_BT);
+        }
+
+        /**
+         * Stop after 3 seconds
+         */
+        Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+
+            @Override
+            public void run() {
+                mBluetoothAdapter.stopLeScan(mLeScanCallback);
+            }
+        }, 3000);
+    }
+
+
+    //工作名稱 r 的工作內容
+
+    private Runnable r1 =new Runnable () {
+        public void run() {
+            find_beacon();
+/*           顯示UI
+             http://j796160836.pixnet.net/blog/post/28766165-%5Bandroid%5D-%E5%A4%9A%E5%9F%B7%E8%A1%8C%E7%B7%92-handler%E5%92%8Cthread%E7%9A%84%E9%97%9C%E4%BF%82
+            //請經紀人指派工作名稱 r，給工人做
+            mUI_Handler.post(r2);*/
+        }
+    };
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        //移除工人上的工作
+        if (mThreadHandler != null) {
+            mThreadHandler.removeCallbacks(r1);
+        }
+
+        //解聘工人 (關閉Thread)
+        if (mThread != null) {
+            mThread.quit();
+        }
+    }
 }
