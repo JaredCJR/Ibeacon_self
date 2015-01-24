@@ -5,13 +5,24 @@ package com.home.mmn.ibeacon_self;
 
 public class beacon {
     private static final int REQUEST_ENABLE_BT = 2;
-    private double dist = -1;
+    private double dist = 999;
     private int txPower = -59;
     private String hexScanRecord = "error";
     private int major = -999;
     private int minor =-999;
     private int rssi = -999;
     private String uuid = "error";
+
+
+    public beacon()
+    {
+        this.uuid = uuid;
+        this.major=major;
+        this.minor=minor;
+        this.txPower=txPower;
+        this.rssi=rssi;
+        this.dist=dist;
+    }
 
     public beacon(String Uuid , int Major , int Minor , int TxPower , int Rssi ,double Distance)
     {
