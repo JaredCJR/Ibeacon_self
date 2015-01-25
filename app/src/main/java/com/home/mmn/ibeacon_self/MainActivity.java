@@ -8,21 +8,18 @@ import android.content.Intent;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.os.Bundle;
+import android.os.Handler;
 import android.os.HandlerThread;
 import android.support.v7.app.ActionBarActivity;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.os.Handler;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import java.util.ArrayList;
-import java.util.List;
 
 
 public class MainActivity extends ActionBarActivity implements View.OnTouchListener {
@@ -59,6 +56,12 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
     private beacon_circle circle_3;
     private circle_intersection_pos sect_pos[]= new circle_intersection_pos[6];
     private circle_intersection_pos pos_user;
+    private cross_pos_and_dist[] pos_dist_combine = new cross_pos_and_dist[15];
+    private double mapping_px_radius_1 = -1;
+    private double mapping_px_radius_2 = -1;
+    private double mapping_px_radius_3 = -1;
+    private cross_pos_and_dist[] nearest_combine = new cross_pos_and_dist[3];
+    private circle_intersection_pos critical_cross_point[] = new circle_intersection_pos[3];
 
 
     private BluetoothAdapter.LeScanCallback mLeScanCallback = new BluetoothAdapter.LeScanCallback() {
@@ -148,7 +151,7 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
             }
         }, 1400);
 
-        new Handler().postDelayed(new Runnable(){
+        /*new Handler().postDelayed(new Runnable(){
             public void run() {
                 //do something after 1 sec
                 Log.v("=====>", "finish wait for 2.5 sec");
@@ -173,7 +176,7 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
                 Log.v("=====>", "second scan");
                 find_beacon_thread();
             }
-        }, 5600);
+        }, 5600);*/
 
 
 
@@ -209,7 +212,7 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
         //找到特約工人的經紀人，這樣才能派遣工作 (找到Thread上的Handler)
         mThreadHandler=new Handler(mThread.getLooper());
         //請經紀人指派工作名稱 r，給工人做
-        mThreadHandler.post(r1);
+        mThreadHandler.post(get_user);
     }
 
 
@@ -304,23 +307,26 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
 
     //工作名稱 r 的工作內容
 
-    private Runnable r1 =new Runnable () {
+    private Runnable get_user =new Runnable () {
         public void run() {
             find_beacon();
 /*           顯示UI
              http://j796160836.pixnet.net/blog/post/28766165-%5Bandroid%5D-%E5%A4%9A%E5%9F%B7%E8%A1%8C%E7%B7%92-handler%E5%92%8Cthread%E7%9A%84%E9%97%9C%E4%BF%82
             //請經紀人指派工作名稱 r，給工人做
             mUI_Handler.post(r2);*/
-
-
             new Handler().postDelayed(new Runnable(){
                 public void run() {
 
-                    Log.v("=====>", "finish wait for 1.25 sec");
+                    Log.v("=====>", "wait for 1.25 sec");
                     Log.v("=====>", "show");
+
+                    beacon_sort(myIbeacon);
+                    calc_all_cross_points(circle_1,circle_2,circle_3);
+                    get_critical_3_cross_points_and_user_position();
+
                     for(int i=0;i<myIbeacon.length;i++)
                     {
-                        beacon_sort(myIbeacon);
+
                         Log.v("sort=====>", "第 "+(i+1)+"個 beacon");
                         Log.v("sort=====>", "minor:"+sorted_beacon[i].get_minor());
                         Log.v("sort=====>", "RSSI:"+sorted_beacon[i].get_rssi());
@@ -336,7 +342,7 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
         super.onDestroy();
         //移除工人上的工作
         if (mThreadHandler != null) {
-            mThreadHandler.removeCallbacks(r1);
+            mThreadHandler.removeCallbacks(get_user);
         }
 
         //解聘工人 (關閉Thread)
@@ -345,7 +351,7 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
         }
     }
 
-
+//http://www.vogella.com/tutorials/JavaAlgorithmsQuicksort/article.html
     private beacon[] sorted_beacon;
     private int sorted_beacon_array_length;
 
@@ -356,10 +362,10 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
         }
         sorted_beacon = values;
         sorted_beacon_array_length = values.length;
-        quicksort(0, sorted_beacon_array_length - 1);
+        quicksort_beacon(0, sorted_beacon_array_length - 1);
     }
 
-    private void quicksort(int low, int high) {
+    private void quicksort_beacon(int low, int high) {
         int i = low, j = high;
         // Get the pivot element from the middle of the list
         beacon pivot = sorted_beacon[low + (high-low)/2];
@@ -390,9 +396,9 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
         }
         // Recursion
         if (low < j)
-            quicksort(low, j);
+            quicksort_beacon(low, j);
         if (i < high)
-            quicksort(i, high);
+            quicksort_beacon(i, high);
     }
 
 
@@ -502,9 +508,12 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
                 canvas.drawCircle(map_x_1,map_y_1,30,p);
                 canvas.drawCircle(map_x_2,map_y_2,30,p);
                 canvas.drawCircle(map_x_3,map_y_3,30,p);
-                circle_1=new beacon_circle(map_x_1,map_y_1,sorted_beacon[0].get_dist());
-                circle_2=new beacon_circle(map_x_2,map_y_2,sorted_beacon[1].get_dist());
-                circle_3=new beacon_circle(map_x_3,map_y_3,sorted_beacon[2].get_dist());
+
+                mapping_meter_to_px(sorted_beacon[0].get_dist(),sorted_beacon[1].get_dist(),sorted_beacon[2].get_dist());
+
+                circle_1=new beacon_circle(map_x_1,map_y_1,mapping_px_radius_1);
+                circle_2=new beacon_circle(map_x_2,map_y_2,mapping_px_radius_2);
+                circle_3=new beacon_circle(map_x_3,map_y_3,mapping_px_radius_3);
             }
             else
             {
@@ -516,7 +525,22 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
         }
     }
 
-    public void calc_two_circle(beacon_circle A,beacon_circle B)
+    public void mapping_meter_to_px(double meter_1,double meter_2,double meter_3)//mapping: 1 meter = 1000px
+    {
+        mapping_px_radius_1 = (meter_1*1000);
+        mapping_px_radius_2 = (meter_2*1000);
+        mapping_px_radius_3 = (meter_3*1000);
+    }
+
+    public void calc_all_cross_points(beacon_circle A,beacon_circle B, beacon_circle C)
+    {
+        calc_cirlce_cross_points(A,B,0);
+        calc_cirlce_cross_points(B,C,2);
+        calc_cirlce_cross_points(A,C,4);
+    }
+
+
+    public void calc_cirlce_cross_points(beacon_circle A,beacon_circle B,int store_index)
     {
         //http://blog.xuite.net/andy19890411/Orz/17302463-%E3%80%90%E6%95%99%E5%AD%B8%E3%80%91%E4%BD%9C%E6%A5%AD%E5%85%AB+-+%E5%B0%8B%E6%89%BE%E5%85%A9%E5%9C%93%E4%BA%A4%E9%BB%9E%E3%80%82(2008.05.29%E5%8E%9F%E5%A7%8B%E6%AA%94OK)
         double x1=A.get_x();
@@ -544,12 +568,29 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
                 sect_x2=((-b)-Math.sqrt(b*b-4*a*c))/(2*a);//x=(-b-√(b^2-4ac))/2a
                 sect_y2=m*sect_x2+k;//y=mx+k
                 if(b*b-4*a*c>0)//兩交點
-                    printf("The cross points are (%.2lf,%.2lf) and (%.2lf,%.2lf).\n",sect_x1,sect_y1,sect_x2,sect_y2);
+                {
+                    sect_pos[store_index] = new circle_intersection_pos(sect_x1,sect_y1);
+                    sect_pos[(store_index+1)] = new circle_intersection_pos(sect_x2,sect_y2);
+                    Log.v("=====>", "sect_pos"+store_index+": ( "+sect_pos[store_index].get_x()+" , "+sect_pos[store_index].get_y()+" )");
+                    Log.v("=====>", "sect_pos"+(store_index+1)+": ( "+sect_pos[(store_index+1)].get_x()+" , "+sect_pos[(store_index+1)].get_y()+" )");
+                }
                 else//一交點
-                    printf("The cross points are (%.2lf,%.2lf).\n",sect_x1,sect_y1);
+                {
+                    //sect_pos[store_index](sect_x1,sect_y1);
+                    //sect_pos[(store_index+1)](sect_x1,sect_y1);
+                    Toast.makeText(getApplicationContext(), "只有1個交點！!!!!!!!", Toast.LENGTH_SHORT).show();
+                    Log.v("=====>", "只有1個交點！!!!!!!!");
+                    //Log.v("=====>", "sect_pos"+store_index": ( "+sect_pos[store_index].get_x()+" , "+sect_pos[store_index].get_y()+" )");
+                    //Log.v("=====>", "sect_pos"+(store_index+1)": ( "+sect_pos[(store_index+1)].get_x()+" , "+sect_pos[(store_index+1)].get_y()+" )");
+                }
             }
             else//沒有交點時
-                printf("No cross points.\n");
+            {
+                {
+                    Toast.makeText(getApplicationContext(), "沒有交點!!!!!", Toast.LENGTH_SHORT).show();
+                    Log.v("=====>", "沒有交點！!!!!!!!");
+                }
+            }
         }
         else if((y1==y2))//兩圓圓心Y值相同時
         {//sect_x1= 兩交點的x值、 a、b、c= x=(-b±√(b^2-4ac))/2a的係數
@@ -560,12 +601,154 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
                 sect_y1=((-b)+Math.sqrt(b*b-4*a*c))/(2*a);//y=(-b+√(b^2-4ac))/2a
                 sect_y2=((-b)-Math.sqrt(b*b-4*a*c))/(2*a);//y=(-b-√(b^2-4ac))/2a
                 if(b*b-4*a*c>0)//兩交點
-                    printf("The cross points are (%.2lf,%.2lf) and (%.2lf,%.2lf).\n",sect_x1,sect_y1,sect_x1,sect_y2);
+                {
+                    sect_pos[store_index] = new circle_intersection_pos(sect_x1,sect_y1);
+                    sect_pos[(store_index+1)]= new circle_intersection_pos(sect_x1,sect_y2);
+                    Log.v("=====>", "sect_pos"+store_index+": ( "+sect_pos[store_index].get_x()+" , "+sect_pos[store_index].get_y()+" )");
+                    Log.v("=====>", "sect_pos"+(store_index+1)+": ( "+sect_pos[(store_index+1)].get_x()+" , "+sect_pos[(store_index+1)].get_y()+" )");
+                }
                 else//一交點
-                    printf("The cross points are (%.2lf,%.2lf).\n",sect_x1,sect_y1);
+                {
+                    //sect_pos[store_index] (sect_x1, sect_y1);
+                    //sect_pos[(store_index + 1)] (sect_x1, sect_y1);
+                    Toast.makeText(getApplicationContext(), "only one cross point,remain the same 2 cross point!", Toast.LENGTH_SHORT).show();
+                    Log.v("=====>","only one cross point,remain the same 2 cross point!");
+                    //Log.v("=====>", "sect_pos" + store_index": ( " + sect_pos[store_index].get_x() + " , " + sect_pos[store_index].get_y() + " )");
+                    //Log.v("=====>", "sect_pos" + (store_index + 1)": ( " + sect_pos[(store_index + 1)].get_x() + " , " + sect_pos[(store_index + 1)].get_y() + " )");
+                }
             }
             else//沒有交點時
-                printf("No cross points.\n");
+            {
+                Toast.makeText(getApplicationContext(), "沒有交點!!!!!", Toast.LENGTH_SHORT).show();
+                Log.v("=====>", "沒有交點！!!!!!!!");
+            }
+        }
+    }
+
+    public void get_critical_3_cross_points_and_user_position()
+    {
+        pos_dist_combine[0] = new cross_pos_and_dist(sect_pos[0],sect_pos[1]);// 15 combinations(length) for 6 cross ponits
+        pos_dist_combine[1] = new cross_pos_and_dist(sect_pos[0],sect_pos[2]);
+        pos_dist_combine[2] = new cross_pos_and_dist(sect_pos[0],sect_pos[3]);
+        pos_dist_combine[3] = new cross_pos_and_dist(sect_pos[0],sect_pos[4]);
+        pos_dist_combine[4] = new cross_pos_and_dist(sect_pos[0],sect_pos[5]);
+        pos_dist_combine[5] = new cross_pos_and_dist(sect_pos[1],sect_pos[2]);
+        pos_dist_combine[6] = new cross_pos_and_dist(sect_pos[1],sect_pos[3]);
+        pos_dist_combine[7] = new cross_pos_and_dist(sect_pos[1],sect_pos[4]);
+        pos_dist_combine[8] = new cross_pos_and_dist(sect_pos[1],sect_pos[5]);
+        pos_dist_combine[9] = new cross_pos_and_dist(sect_pos[2],sect_pos[3]);
+        pos_dist_combine[10] = new cross_pos_and_dist(sect_pos[2],sect_pos[4]);
+        pos_dist_combine[11] = new cross_pos_and_dist(sect_pos[2],sect_pos[5]);
+        pos_dist_combine[12] = new cross_pos_and_dist(sect_pos[3],sect_pos[4]);
+        pos_dist_combine[13] = new cross_pos_and_dist(sect_pos[3],sect_pos[5]);
+        pos_dist_combine[14] = new cross_pos_and_dist(sect_pos[4],sect_pos[5]);
+
+        cross_pos_and_dist_sort(pos_dist_combine);
+
+        for(int i =0;i<3;i++)
+        {
+            nearest_combine[i]=pos_dist_combine[i];
+        }
+
+        unique_pos(nearest_combine);//get critical_cross_point[3] combination
+        calc_where_is_user(critical_cross_point);//get user position:pos_user
+        
+    }
+
+    public void calc_where_is_user(circle_intersection_pos[] A)
+    {
+        //http://yu-li-liang.blogspot.tw/2012/10/blog-post_24.html
+        pos_user=new circle_intersection_pos(  ( (A[0].get_x()+A[1].get_x()+A[2].get_x()) /3),    ( (A[0].get_y()+A[1].get_y()+A[2].get_y()) /3)       );
+    }
+
+
+    private cross_pos_and_dist[] sorted_combination;
+    private int sorted_combination_length;
+
+    public void cross_pos_and_dist_sort(cross_pos_and_dist[] values) {
+        // check for empty or null array
+        if (values ==null || values.length==0){
+            return;
+        }
+        sorted_combination = values;
+        sorted_combination_length = values.length;
+        quicksort_cross_pos_and_dist(0, sorted_combination_length - 1);
+    }
+
+    private void quicksort_cross_pos_and_dist(int low, int high) {
+        int i = low, j = high;
+        // Get the pivot element from the middle of the list
+        cross_pos_and_dist pivot = sorted_combination[low + (high-low)/2];
+
+        // Divide into two lists
+        while (i <= j) {
+            // If the current value from the left list is smaller then the pivot
+            // element then get the next element from the left list
+            while (sorted_combination[i].get_dist() < pivot.get_dist()) {
+                i++;
+            }
+            // If the current value from the right list is larger then the pivot
+            // element then get the next element from the right list
+            while (sorted_combination[j].get_dist() > pivot.get_dist()) {
+                j--;
+            }
+
+            // If we have found a values in the left list which is larger then
+            // the pivot element and if we have found a value in the right list
+            // which is smaller then the pivot element then we exchange the
+            // values.
+            // As we are done we can increase i and j
+            if (i <= j) {
+                cross_pos_and_dist_swap(sorted_combination, i, j);
+                i++;
+                j--;
+            }
+        }
+        // Recursion
+        if (low < j)
+            quicksort_cross_pos_and_dist(low, j);
+        if (i < high)
+            quicksort_cross_pos_and_dist(i, high);
+    }
+
+    public void cross_pos_and_dist_swap(cross_pos_and_dist array[], int index1, int index2)
+// pre: array is full and index1, index2 < array.length
+// post: the values at indices 1 and 2 have been swapped
+    {
+        cross_pos_and_dist temp = array[index1];           // store the first value in a temp
+        array[index1] = array[index2];      // copy the value of the second into the first
+        array[index2] = temp;               // copy the value of the temp into the second
+    }
+
+    public void unique_pos(cross_pos_and_dist[] A)  //choose 3 unique position from 6 position made of 3 same combination
+    {
+        circle_intersection_pos B[] = new circle_intersection_pos[6];
+        B[0] = new circle_intersection_pos(A[0].get_x1() , A[0].get_y1());
+        B[1] = new circle_intersection_pos(A[0].get_x2() , A[0].get_y2());
+        B[2] = new circle_intersection_pos(A[1].get_x1() , A[1].get_y1());
+        B[3] = new circle_intersection_pos(A[1].get_x2() , A[1].get_y2());
+        B[4] = new circle_intersection_pos(A[2].get_x1() , A[2].get_y1());
+        B[5] = new circle_intersection_pos(A[2].get_x2() , A[2].get_y2());
+
+
+        int w =0;
+
+        for(int i =0;i<6;i++)
+        {
+                int z = 1;
+                while( ((i+z)<6) )
+                {
+                    if(  ( B[i].get_x() == B[i+z].get_x() )  &&  (B[i].get_y() == B[i+z].get_y() )  )
+                    {
+                        critical_cross_point[w] = B[i];//copy the A[i] reference to critical_cross_point[w]  (meaning point to same memory)
+                        w++;
+                    }
+                    else
+                    {
+                        z++;
+                    }
+                }
+
         }
     }
 

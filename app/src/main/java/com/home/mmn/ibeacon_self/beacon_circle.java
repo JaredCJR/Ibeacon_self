@@ -3,7 +3,7 @@ package com.home.mmn.ibeacon_self;
 /**
  * Created by Jared on 2015/1/25.
  */
-public class beacon_circle {
+public class beacon_circle extends circle_intersection_pos{
     private double pos_x=-1;
     private double pos_y=-1;
     private double radius=-1;
