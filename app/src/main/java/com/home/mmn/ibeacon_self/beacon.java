@@ -16,12 +16,6 @@ public class beacon {
 
     public beacon()
     {
-        this.uuid = uuid;
-        this.major=major;
-        this.minor=minor;
-        this.txPower=txPower;
-        this.rssi=rssi;
-        this.dist=dist;
     }
 
     public beacon(String Uuid , int Major , int Minor , int TxPower , int Rssi ,double Distance)
@@ -63,5 +57,6 @@ public class beacon {
     {
         return this.dist;
     }
+
 
 }

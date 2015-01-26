@@ -1,22 +1,22 @@
 package com.home.mmn.ibeacon_self;
 
-/**
- * Created by Jared on 2015/1/25.
- */
+
 public class beacon_circle extends circle_intersection_pos{
     private double pos_x=-1;
     private double pos_y=-1;
     private double radius=-1;
+    private int minor=-1;
 
     beacon_circle()
     {
     }
 
-    beacon_circle(double x,double y,double r)
+    beacon_circle(double x,double y,int minor)
     {
         this.pos_x=x;
         this.pos_y=y;
-        this.radius=r;
+        //this.radius=r;
+        this.minor=minor;
     }
 
     public double get_x()
@@ -45,6 +45,11 @@ public class beacon_circle extends circle_intersection_pos{
     public void set_r(double r)
     {
         this.radius=r;
+    }
+
+    public int get_minor()
+    {
+        return this.minor;
     }
 
 }
