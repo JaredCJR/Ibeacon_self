@@ -26,9 +26,9 @@ android:orientation="vertical"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceMedium"
-        android:paddingTop="50dip"
+        android:paddingTop="20dip"
         android:paddingLeft="10dip"
-        android:text="Pleace assign beacons position in order"
+        android:text="Please assign beacons position in order"
         android:id="@+id/show_Coordinate" />
 
 

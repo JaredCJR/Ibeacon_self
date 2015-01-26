@@ -59,12 +59,14 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
     private Button btn_get_position;
     private boolean stop_positioning = true;
     private int loop_count = 1;
-    private boolean next_positioning = false;
+    private boolean next_positioning = true;
 
 
     private BluetoothAdapter.LeScanCallback mLeScanCallback = new BluetoothAdapter.LeScanCallback() {
         @Override
         public void onLeScan(final BluetoothDevice device, final int rssi, final byte[] scanRecord) {
+
+            Log.v("=====>", "Start OnLeScan");
             int startByte = 2;
             boolean patternFound = false;
             while (startByte <= 5) {
@@ -126,12 +128,14 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        Log.v("=====>", "Start onCreate");
         InitView();
 
         btn_get_position.setOnClickListener(new Button.OnClickListener(){
             @Override
             public void onClick(View v) {
 //do something
+                Log.v("=====>", "Start btn");
                 stop_positioning = false;
                 infinite_positioning();
             }
@@ -145,16 +149,20 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
     {
         while(stop_positioning == false)
         {
+            stop_positioning = true;
+            Log.v("=====>", "Start infinite_positioning while");
 
             if(next_positioning)
             {
+                Log.v("=====>", "Start infinite_positioning if");
                 next_positioning = false;
 
                 new Handler().postDelayed(new Runnable(){
                     public void run() {
+                        Log.v("=====>", "Start infinite_positioning postDelayed");
                         find_beacon_thread();
                     }
-                }, (1500*loop_count) );
+                }, (1500*(loop_count-1))  );
             }
 
 
@@ -173,11 +181,13 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
 
     public void put_beacon_and_user_on_map()
     {
+        Log.v("=====>", "Start put_beacon_and_user_on_map");
         view=new DrawView(this);
         view.setMinimumHeight(1000);
         view.setMinimumWidth(1000);
         //通知view組件重繪
         view.invalidate();
+        //view.postInvalidate();
         llLayout.addView(view,0);//(View child, int width, int height)
     }
 
@@ -185,7 +195,7 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
     public void find_beacon_thread()
     {
 
-        for(int i =0;i<(beacon_number+1);i++) //初始5beacon
+        for(int i =0;i<(beacon_number+1);i++) //初始5 beacon
         {
             myIbeacon[i]=new beacon();
         }
@@ -286,7 +296,7 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
             public void run() {
                 mBluetoothAdapter.stopLeScan(mLeScanCallback);
             }
-        }, 1100);
+        }, (1100*loop_count) );
     }
 
 
@@ -294,6 +304,7 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
 
     private Runnable get_user_pos =new Runnable () {
         public void run() {
+            Log.v("=====>", "Start get_user_pos");
             find_beacon();//find all beacons
 
 /*           顯示UI
@@ -307,19 +318,38 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
                     Log.v("=====>", "show");
 
                     //after we find  beacons,then we can strat positioning!
-                    int find_beacon_number = 0;
-                    for(int i =0;i<beacon_number;i++)
+                    int find_beacon_number = 1;
+                    for(int i =0;i<(beacon_number+1);i++)
                     {
 
+                        Log.v("=====>", "beacon_number:"+beacon_number);
 
+                        Log.v("=====>", "find_beacon_minor:"+myIbeacon[i].get_minor());
                         if(myIbeacon[i].get_minor() != -999)
                         {
+                            Log.v("=====>", "find_beacon_number:"+find_beacon_number);
+
                             find_beacon_number++;
                         }
                     }
-                    if(find_beacon_number >=3)
+
+                    if(find_beacon_number >2)
                     {
                         engine.start_positioning(myIbeacon);//Strat positioning!
+                        Log.v("=====>", "user_pos_x:"+engine.get_user_pos().get_x());
+                        Log.v("=====>", "user_pos_y:"+engine.get_user_pos().get_y());
+                        user_pos_x = engine.get_user_pos().get_x();
+                        user_pos_y = engine.get_user_pos().get_y();
+
+
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                // This code will always run on the UI thread, therefore is safe to modify UI elements.
+                                put_beacon_and_user_on_map();//Get user position,the work is done!
+                            }
+                        });
+                        //put_beacon_and_user_on_map();//Get user position,the work is done!
                     }
                     else
                     {
@@ -329,7 +359,7 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
 
 
 
-
+                     /*
                     for(int i=0;i<myIbeacon.length;i++)
                     {
 
@@ -338,17 +368,15 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
                         Log.v("sort=====>", "minor:"+sorted_beacon[i].get_minor());
                         Log.v("sort=====>", "RSSI:"+sorted_beacon[i].get_rssi());
                         Log.v("sort=====>", "distance:"+sorted_beacon[i].get_dist());
-                    }
-
+                    }*/
 
                     loop_count++;//assign next scan time
                     next_positioning = true;//Allowing the next scan
-                    user_pos_x = engine.get_user_pos().get_x();
-                    user_pos_y = engine.get_user_pos().get_y();
-                    put_beacon_and_user_on_map();//Get user position,the work is done!
+                    stop_positioning = false;
+
 
                 }
-            }, 1250);   //1.25秒
+            }, (1250*(loop_count) ) );   //1.25秒
         }
     };
 

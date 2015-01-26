@@ -73,11 +73,11 @@ public class positioning_engine {
         this.circle_3=circle3;
     }
 
-    public void mapping_meter_to_px(double meter_1,double meter_2,double meter_3)//mapping: 1 meter = 1000px
+    public void mapping_meter_to_px(double meter_1,double meter_2,double meter_3)//mapping: 1 meter = 200px
     {
-        mapping_px_radius_1 = (meter_1*1000);
-        mapping_px_radius_2 = (meter_2*1000);
-        mapping_px_radius_3 = (meter_3*1000);
+        mapping_px_radius_1 = (meter_1*200);
+        mapping_px_radius_2 = (meter_2*200);
+        mapping_px_radius_3 = (meter_3*200);
     }
 
 
@@ -251,12 +251,22 @@ public class positioning_engine {
 
     public void get_critical_3_cross_points_and_user_position()
     {
-        for(int i=0;i<5;i++)
+        for(int i=0;i<6;i++)
         {
-            if( ( sect_pos[i].get_x()==-9999 ) && ( sect_pos[i].get_y()==-9999  ) )
+            try
             {
-                sect_pos[i].set_x(last_time_sect_pos[i].get_x());
-                sect_pos[i].set_y(last_time_sect_pos[i].get_y());
+                if( ( sect_pos[i].get_x()==-9999 ) && ( sect_pos[i].get_y()==-9999  ) )
+                {
+
+                    sect_pos[i].set_x(last_time_sect_pos[i].get_x());
+                    sect_pos[i].set_y(last_time_sect_pos[i].get_y());
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.v("=====>", "The cross point is too less!");
+                Log.v("=====>", ex.getMessage());
+
             }
         }
 
@@ -386,8 +396,17 @@ public class positioning_engine {
 
     public void calc_where_is_user(circle_intersection_pos[] A)
     {
+
+        Log.v("=====>", "Start calc_where_is_user:");
         //http://yu-li-liang.blogspot.tw/2012/10/blog-post_24.html
-        pos_user=new circle_intersection_pos(  ( (A[0].get_x()+A[1].get_x()+A[2].get_x()) /3),    ( (A[0].get_y()+A[1].get_y()+A[2].get_y()) /3)       );
+        try{
+            pos_user=new circle_intersection_pos(  ( (A[0].get_x()+A[1].get_x()+A[2].get_x()) /3),    ( (A[0].get_y()+A[1].get_y()+A[2].get_y()) /3)       );
+        }
+
+        catch(Exception ex)
+        {
+        Log.v("=====>", ex.getMessage());
+        }
     }
 
     public circle_intersection_pos get_user_pos()
