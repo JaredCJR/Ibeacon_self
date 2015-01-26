@@ -17,6 +17,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -32,7 +33,7 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
     private String get_uuid = "error";
     private BluetoothAdapter mBluetoothAdapter;
     private static final int REQUEST_ENABLE_BT = 2;
-    private double dist = -999;
+    private double dist = 9999;
     private int txPower = -59;
     private beacon[] myIbeacon = new beacon[(beacon_number+1)];//有5個 beacon
     private TextView show_Coordinate;
@@ -46,6 +47,8 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
     private float map_y_2 = -999;
     private float map_x_3 = -999;
     private float map_y_3 = -999;
+    private double user_pos_x = -999;
+    private  double user_pos_y = -999;
     private int conut_putted_beacons=0;
     private Paint p = new Paint();
     private DrawView view;
@@ -53,6 +56,10 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
     private beacon_circle circle_2;
     private beacon_circle circle_3;
     private positioning_engine engine = new positioning_engine();
+    private Button btn_get_position;
+    private boolean stop_positioning = true;
+    private int loop_count = 1;
+    private boolean next_positioning = false;
 
 
     private BluetoothAdapter.LeScanCallback mLeScanCallback = new BluetoothAdapter.LeScanCallback() {
@@ -95,14 +102,15 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
 
 
                 myIbeacon[minor] = new beacon(uuid ,major , minor ,txPower , rssi ,dist);
-                /*Log.v("=====>", "hex_scanRecord:" + hexScanRecord);
+                Log.v("=====>", "hex_scanRecord:" + hexScanRecord);
                 Log.v("=====>", "UUID:"+myIbeacon[minor].get_uuid());
                 Log.v("=====>", "minor:"+minor);
                 Log.v("=====>", "RSSI:"+myIbeacon[minor].get_rssi());
-                Log.v("=====>", "distance:"+myIbeacon[minor].get_dist());*/
+                Log.v("=====>", "distance:"+myIbeacon[minor].get_dist());
             }
         }
     };
+
 
     //找到UI工人的經紀人，這樣才能派遣工作  (找到顯示畫面的UI Thread上的Handler)
     private Handler mUI_Handler = new Handler();
@@ -118,23 +126,52 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        llLayout = (LinearLayout)findViewById(R.id.map);
-        show_Coordinate = (TextView)findViewById(R.id.show_Coordinate);
-        llLayout.setOnTouchListener(this);
+        InitView();
 
-        Log.v("=====>", "first scan");
-
-//15秒後開始掃描
-        new Handler().postDelayed(new Runnable(){
-            public void run() {
-
-                find_beacon_thread();
+        btn_get_position.setOnClickListener(new Button.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+//do something
+                stop_positioning = false;
+                infinite_positioning();
             }
-        }, 15000);
+        });
+
+        llLayout.setOnTouchListener(this);
 
     }
 
-    public void put_beacon_on_map()
+    public void infinite_positioning()
+    {
+        while(stop_positioning == false)
+        {
+
+            if(next_positioning)
+            {
+                next_positioning = false;
+
+                new Handler().postDelayed(new Runnable(){
+                    public void run() {
+                        find_beacon_thread();
+                    }
+                }, (1500*loop_count) );
+            }
+
+
+        }
+
+    }
+
+
+    public void InitView()
+    {
+        llLayout = (LinearLayout)findViewById(R.id.map);
+        show_Coordinate = (TextView)findViewById(R.id.show_Coordinate);
+        btn_get_position = (Button)findViewById(R.id.btn_position);
+    }
+
+
+    public void put_beacon_and_user_on_map()
     {
         view=new DrawView(this);
         view.setMinimumHeight(1000);
@@ -269,8 +306,29 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
                     Log.v("=====>", "wait for 1.25 sec");
                     Log.v("=====>", "show");
 
-                    //after we find all beacons,then we can strat positioning!
-                    engine.start_positioning(myIbeacon);
+                    //after we find  beacons,then we can strat positioning!
+                    int find_beacon_number = 0;
+                    for(int i =0;i<beacon_number;i++)
+                    {
+
+
+                        if(myIbeacon[i].get_minor() != -999)
+                        {
+                            find_beacon_number++;
+                        }
+                    }
+                    if(find_beacon_number >=3)
+                    {
+                        engine.start_positioning(myIbeacon);//Strat positioning!
+                    }
+                    else
+                    {
+                        Toast.makeText(getApplicationContext(), "Can't find more than 2 beacons,abort!", Toast.LENGTH_SHORT).show();
+                    }
+
+
+
+
 
                     for(int i=0;i<myIbeacon.length;i++)
                     {
@@ -282,7 +340,12 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
                         Log.v("sort=====>", "distance:"+sorted_beacon[i].get_dist());
                     }
 
-                    engine.get_user_pos();//Get user position,the work is done!
+
+                    loop_count++;//assign next scan time
+                    next_positioning = true;//Allowing the next scan
+                    user_pos_x = engine.get_user_pos().get_x();
+                    user_pos_y = engine.get_user_pos().get_y();
+                    put_beacon_and_user_on_map();//Get user position,the work is done!
 
                 }
             }, 1250);   //1.25秒
@@ -335,7 +398,7 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
             Toast.makeText(getApplicationContext(), "有n個beacon就要改n個判斷_Touch", Toast.LENGTH_SHORT).show();
         }
 
-        put_beacon_on_map();
+        put_beacon_and_user_on_map();
         return false;
     }
 
@@ -351,23 +414,15 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
 
             // 建立初始畫布
             //Paint p = new Paint();								// 創建畫筆
-            put_color = "BLUE";
-            draw_beacons(put_color,canvas);
+            draw_user_and_beacon_position(put_color,canvas);
         }
 
-        private void draw_beacons(String color,Canvas canvas)
+        private void draw_user_and_beacon_position(String color,Canvas canvas)
         {
 
             p.setAntiAlias(true);									// 設置畫筆的鋸齒效果。 true是去除。
 
-            if(color.equals("BLUE"))
-            {
-                p.setColor(Color.BLUE);								// 設置色
-            }
-            else if(color.equals("RED"))
-            {
-                p.setColor(Color.RED);								// 設置色
-            }
+            p.setColor(Color.BLUE);								// 設置色
 
             if(conut_putted_beacons==1)
             {
@@ -378,13 +433,15 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
                 canvas.drawCircle(map_x_1,map_y_1,30,p);
                 canvas.drawCircle(map_x_2,map_y_2,30,p);
             }
-            else if(conut_putted_beacons==3)
+            else if( (conut_putted_beacons==3)  )
             {
                 canvas.drawCircle(map_x_1,map_y_1,30,p);
                 canvas.drawCircle(map_x_2,map_y_2,30,p);
                 canvas.drawCircle(map_x_3,map_y_3,30,p);
 
                 assign_radius_and_set_circles();
+
+                draw_user(canvas);
             }
             else
             {
@@ -392,6 +449,7 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
                 canvas.drawCircle(map_x_2,map_y_2,30,p);
                 canvas.drawCircle(map_x_3,map_y_3,30,p);
                 Toast.makeText(getApplicationContext(), "有n個beacon就要改n個判斷_draw", Toast.LENGTH_SHORT).show();
+                draw_user(canvas);
             }
         }
     }
@@ -408,6 +466,15 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
         circle_3=new beacon_circle(map_x_3,map_y_3,5 );
 
         engine.set_circles(circle_1,circle_2,circle_3);
+    }
+
+    public void draw_user(Canvas canvas)
+    {
+        if((user_pos_x!=-999) &&(user_pos_y!=-999))
+        {
+            p.setColor(Color.RED);
+            canvas.drawCircle((float)user_pos_x,(float)user_pos_y,40,p);
+        }
     }
 
 

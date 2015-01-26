@@ -5,7 +5,7 @@ package com.home.mmn.ibeacon_self;
 
 public class beacon {
     private static final int REQUEST_ENABLE_BT = 2;
-    private double dist = 999;
+    private double dist = 9999;
     private int txPower = -59;
     private String hexScanRecord = "error";
     private int major = -999;

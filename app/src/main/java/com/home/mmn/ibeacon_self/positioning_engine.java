@@ -12,6 +12,7 @@ public class positioning_engine {
     private beacon_circle circle_2;
     private beacon_circle circle_3;
     private circle_intersection_pos sect_pos[]= new circle_intersection_pos[6];
+    private circle_intersection_pos last_time_sect_pos[] = new circle_intersection_pos[6];
     private circle_intersection_pos pos_user;
     private cross_pos_and_dist[] pos_dist_combine = new cross_pos_and_dist[15];
     private cross_pos_and_dist[] nearest_combine = new cross_pos_and_dist[3];
@@ -26,7 +27,7 @@ public class positioning_engine {
 
     }
 
-    public void start_positioning(beacon[] Ibeacon)
+    public void start_positioning(beacon[] Ibeacon)//All work is done in here!
     {
         this.myIbeacon = Ibeacon;
         put_correct_radius_to_circles();
@@ -181,13 +182,18 @@ public class positioning_engine {
                 {
                     sect_pos[store_index] = new circle_intersection_pos(sect_x1,sect_y1);
                     sect_pos[(store_index+1)] = new circle_intersection_pos(sect_x2,sect_y2);
+
+                    //save for next scan if the signal is not stable
+                    last_time_sect_pos[store_index] = new circle_intersection_pos(sect_x1,sect_y1);
+                    last_time_sect_pos[(store_index+1)] = new circle_intersection_pos(sect_x2,sect_y2);
+
                     Log.v("=====>", "sect_pos" + store_index + ": ( " + sect_pos[store_index].get_x() + " , " + sect_pos[store_index].get_y() + " )");
                     Log.v("=====>", "sect_pos"+(store_index+1)+": ( "+sect_pos[(store_index+1)].get_x()+" , "+sect_pos[(store_index+1)].get_y()+" )");
                 }
                 else//一交點
                 {
-                    //sect_pos[store_index](sect_x1,sect_y1);
-                    //sect_pos[(store_index+1)](sect_x1,sect_y1);
+                    sect_pos[store_index] = new circle_intersection_pos(sect_x1,sect_y1);
+                    sect_pos[(store_index+1)] = new circle_intersection_pos(sect_x1,sect_y1);
                     //Toast.makeText(getApplicationContext(), "只有1個交點！!!!!!!!", Toast.LENGTH_SHORT).show();
                     Log.v("=====>", "只有1個交點！!!!!!!!");
                     //Log.v("=====>", "sect_pos"+store_index": ( "+sect_pos[store_index].get_x()+" , "+sect_pos[store_index].get_y()+" )");
@@ -196,10 +202,11 @@ public class positioning_engine {
             }
             else//沒有交點時
             {
-                {
+                sect_pos[store_index] = new circle_intersection_pos();
+                sect_pos[(store_index+1)] = new circle_intersection_pos();
                     //Toast.makeText(getApplicationContext(), "沒有交點!!!!!", Toast.LENGTH_SHORT).show();
                     Log.v("=====>", "沒有交點！!!!!!!!");
-                }
+
             }
         }
         else if((y1==y2))//兩圓圓心Y值相同時
@@ -214,13 +221,18 @@ public class positioning_engine {
                 {
                     sect_pos[store_index] = new circle_intersection_pos(sect_x1,sect_y1);
                     sect_pos[(store_index+1)]= new circle_intersection_pos(sect_x1,sect_y2);
+
+                    //save for next scan if the signal is not stable
+                    last_time_sect_pos[store_index] = new circle_intersection_pos(sect_x1,sect_y1);
+                    last_time_sect_pos[(store_index+1)] = new circle_intersection_pos(sect_x1,sect_y2);
+
                     Log.v("=====>", "sect_pos"+store_index+": ( "+sect_pos[store_index].get_x()+" , "+sect_pos[store_index].get_y()+" )");
                     Log.v("=====>", "sect_pos"+(store_index+1)+": ( "+sect_pos[(store_index+1)].get_x()+" , "+sect_pos[(store_index+1)].get_y()+" )");
                 }
                 else//一交點
                 {
-                    //sect_pos[store_index] (sect_x1, sect_y1);
-                    //sect_pos[(store_index + 1)] (sect_x1, sect_y1);
+                    sect_pos[store_index] = new circle_intersection_pos(sect_x1,sect_y1);
+                    sect_pos[(store_index+1)] = new circle_intersection_pos(sect_x1,sect_y1);
                     //Toast.makeText(getApplicationContext(), "only one cross point,remain the same 2 cross point!", Toast.LENGTH_SHORT).show();
                     Log.v("=====>","only one cross point,remain the same 2 cross point!");
                     //Log.v("=====>", "sect_pos" + store_index": ( " + sect_pos[store_index].get_x() + " , " + sect_pos[store_index].get_y() + " )");
@@ -229,6 +241,8 @@ public class positioning_engine {
             }
             else//沒有交點時
             {
+                sect_pos[store_index] = new circle_intersection_pos();
+                sect_pos[(store_index+1)] = new circle_intersection_pos();
                 //Toast.makeText(getApplicationContext(), "沒有交點!!!!!", Toast.LENGTH_SHORT).show();
                 Log.v("=====>", "沒有交點！!!!!!!!");
             }
@@ -237,6 +251,16 @@ public class positioning_engine {
 
     public void get_critical_3_cross_points_and_user_position()
     {
+        for(int i=0;i<5;i++)
+        {
+            if( ( sect_pos[i].get_x()==-9999 ) && ( sect_pos[i].get_y()==-9999  ) )
+            {
+                sect_pos[i].set_x(last_time_sect_pos[i].get_x());
+                sect_pos[i].set_y(last_time_sect_pos[i].get_y());
+            }
+        }
+
+
         pos_dist_combine[0] = new cross_pos_and_dist(sect_pos[0],sect_pos[1]);// 15 combinations(length) for 6 cross ponits
         pos_dist_combine[1] = new cross_pos_and_dist(sect_pos[0],sect_pos[2]);
         pos_dist_combine[2] = new cross_pos_and_dist(sect_pos[0],sect_pos[3]);
@@ -347,6 +371,9 @@ public class positioning_engine {
                 {
                     critical_cross_point[w] = B[i];//copy the A[i] reference to critical_cross_point[w]  (meaning point to same memory)
                     w++;
+                    z++;
+                    break;
+
                 }
                 else
                 {

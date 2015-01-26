@@ -3,12 +3,13 @@ package com.home.mmn.ibeacon_self;
 
 public class circle_intersection_pos {
 
-    private double pos_x=-1;
-    private double pos_y=-1;
+    private double pos_x=-9999;
+    private double pos_y=-9999;
 
     circle_intersection_pos()
     {
-
+        this.pos_x = -9999;
+        this.pos_y = -9999;
     }
 
     circle_intersection_pos(double x, double y)
