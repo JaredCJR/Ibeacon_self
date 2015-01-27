@@ -11,15 +11,18 @@ public class positioning_engine {
     private beacon_circle circle_1;
     private beacon_circle circle_2;
     private beacon_circle circle_3;
+    private beacon_circle[] circles = new beacon_circle[5];
     private circle_intersection_pos sect_pos[]= new circle_intersection_pos[6];
     private circle_intersection_pos last_time_sect_pos[] = new circle_intersection_pos[6];
     private circle_intersection_pos pos_user;
     private cross_pos_and_dist[] pos_dist_combine = new cross_pos_and_dist[15];
     private cross_pos_and_dist[] nearest_combine = new cross_pos_and_dist[3];
     private circle_intersection_pos critical_cross_point[] = new circle_intersection_pos[3];
-    private double mapping_px_radius_1 = -1;
-    private double mapping_px_radius_2 = -1;
+    private double[] mapping_px_radius = new double[5];
+    /*private double mapping_px_radius_2 = -1;
     private double mapping_px_radius_3 = -1;
+    private double mapping_px_radius_4 = -1;
+    private double mapping_px_radius_5 = -1;*/
 
     positioning_engine()//constructor
     {
@@ -31,7 +34,11 @@ public class positioning_engine {
     {
         this.myIbeacon = Ibeacon;
         put_correct_radius_to_circles();
-        beacon_sort(myIbeacon);//get correct sorted_beacons
+        //beacon_sort(myIbeacon);//Useful?
+        beacon_circle_sort(circles);//Get the circles array according to their radius(px) in increasing
+        circle_1 = sorted_circle[0];
+        circle_2 = sorted_circle[1];
+        circle_3 = sorted_circle[2];
         calc_all_cross_points(circle_1,circle_2,circle_3);
         get_critical_3_cross_points_and_user_position();
     }
@@ -41,23 +48,28 @@ public class positioning_engine {
         //Assign radius to corresponding beacons(according to minor number).
         for(int i=0;i<beacon_number;i++)
         {
-            if(circle_1.get_minor()==myIbeacon[i].get_minor())
+            if(circles[0].get_minor()==myIbeacon[i].get_minor())
             {
-                circle_1.set_r(myIbeacon[i].get_dist());
+                circles[0].set_r(myIbeacon[i].get_dist());
             }
-            else if(circle_2.get_minor()==myIbeacon[i].get_minor())
+            else if(circles[1].get_minor()==myIbeacon[i].get_minor())
             {
-                circle_2.set_r(myIbeacon[i].get_dist());
+                circles[1].set_r(myIbeacon[i].get_dist());
             }
-            else if(circle_3.get_minor()==myIbeacon[i].get_minor())
+            else if(circles[2].get_minor()==myIbeacon[i].get_minor())
             {
-                circle_3.set_r(myIbeacon[i].get_dist());
+                circles[2].set_r(myIbeacon[i].get_dist());
+            }
+            else if(circles[3].get_minor()==myIbeacon[i].get_minor())
+            {
+                circles[3].set_r(myIbeacon[i].get_dist());
+            }
+            else if(circles[4].get_minor()==myIbeacon[i].get_minor())
+            {
+                circles[4].set_r(myIbeacon[i].get_dist());
             }
         }
-        mapping_meter_to_px(circle_1.get_r(),circle_2.get_r(),circle_3.get_r());
-        circle_1.set_r(mapping_px_radius_1);
-        circle_2.set_r(mapping_px_radius_2);
-        circle_3.set_r(mapping_px_radius_3);
+        mapping_meter_to_px();
     }
 
     public beacon[] get_sorted_beacon()
@@ -66,18 +78,19 @@ public class positioning_engine {
     }
 
 
-    public void set_circles(beacon_circle circle1,beacon_circle circle2,beacon_circle circle3)
+    public void set_circles(beacon_circle circle1,beacon_circle circle2,beacon_circle circle3,beacon_circle circle4,beacon_circle circle5)
     {
-        this.circle_1=circle1;
-        this.circle_2=circle2;
-        this.circle_3=circle3;
+        this.circles[0]=circle1;
+        this.circles[1]=circle2;
+        this.circles[2]=circle3;
+        this.circles[3]=circle4;
+        this.circles[4]=circle5;
     }
 
-    public void mapping_meter_to_px(double meter_1,double meter_2,double meter_3)//mapping: 1 meter = 200px
+    public void mapping_meter_to_px()//mapping: 1 meter = 200px
     {
-        mapping_px_radius_1 = (meter_1*200);
-        mapping_px_radius_2 = (meter_2*200);
-        mapping_px_radius_3 = (meter_3*200);
+        for(int i =0;i<beacon_number;i++)
+            this.circles[i].set_r( ( circles[i].get_r()*200 ) );
     }
 
 
@@ -265,7 +278,11 @@ public class positioning_engine {
             catch (Exception ex)
             {
                 Log.v("=====>", "The cross point is too less!");
-                Log.v("=====>", ex.getMessage());
+                Log.v("=====>", "Prediction,due to the available data is too less");
+                //Prediction,due to the available data is too less
+                double predict_x = (( sorted_circle[0].get_x() + sorted_circle[1].get_x() + sorted_circle[2].get_x()  )/3);
+                double predict_y =( ( sorted_circle[0].get_y() + sorted_circle[1].get_y() + sorted_circle[2].get_y()  )/3);
+                sect_pos[i]=new circle_intersection_pos(predict_x,predict_y);
 
             }
         }
@@ -412,6 +429,66 @@ public class positioning_engine {
     public circle_intersection_pos get_user_pos()
     {
         return pos_user;
+    }
+//=================================================================================================
+    private beacon_circle[] sorted_circle;
+    private int sorted_circle_array_length;
+
+    public void beacon_circle_sort(beacon_circle[] values) {
+        // check for empty or null array
+        if (values ==null || values.length==0){
+            return;
+        }
+        sorted_circle = values;
+        sorted_circle_array_length = values.length;
+        quicksort_beacon(0, sorted_circle_array_length - 1);
+    }
+
+    private void quicksort_circles(int low, int high) {
+        int i = low, j = high;
+        // Get the pivot element from the middle of the list
+        beacon_circle pivot = sorted_circle[low + (high-low)/2];
+
+        // Divide into two lists
+        while (i <= j) {
+            // If the current value from the left list is smaller then the pivot
+            // element then get the next element from the left list
+            while (sorted_circle[i].get_r() < pivot.get_r()) {
+                i++;
+            }
+            // If the current value from the right list is larger then the pivot
+            // element then get the next element from the right list
+            while (sorted_circle[i].get_r() > pivot.get_r()) {
+                j--;
+            }
+
+            // If we have found a values in the left list which is larger then
+            // the pivot element and if we have found a value in the right list
+            // which is smaller then the pivot element then we exchange the
+            // values.
+            // As we are done we can increase i and j
+            if (i <= j) {
+                beacon_swap(sorted_circle,i, j);
+                i++;
+                j--;
+            }
+        }
+        // Recursion
+        if (low < j)
+            quicksort_beacon(low, j);
+        if (i < high)
+            quicksort_beacon(i, high);
+    }
+
+
+
+    public void beacon_swap(beacon_circle array[], int index1, int index2)
+// pre: array is full and index1, index2 < array.length
+// post: the values at indices 1 and 2 have been swapped
+    {
+        beacon_circle temp = array[index1];           // store the first value in a temp
+        array[index1] = array[index2];      // copy the value of the second into the first
+        array[index2] = temp;               // copy the value of the temp into the second
     }
 
 

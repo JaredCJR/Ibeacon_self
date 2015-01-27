@@ -47,6 +47,10 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
     private float map_y_2 = -999;
     private float map_x_3 = -999;
     private float map_y_3 = -999;
+    private float map_x_4 = -999;
+    private float map_y_4 = -999;
+    private float map_x_5 = -999;
+    private float map_y_5 = -999;
     private double user_pos_x = -999;
     private  double user_pos_y = -999;
     private int conut_putted_beacons=0;
@@ -55,6 +59,8 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
     private beacon_circle circle_1;
     private beacon_circle circle_2;
     private beacon_circle circle_3;
+    private beacon_circle circle_4;
+    private beacon_circle circle_5;
     private positioning_engine engine = new positioning_engine();
     private Button btn_get_position;
     private boolean stop_positioning = true;
@@ -466,9 +472,22 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
                 canvas.drawCircle(map_x_1,map_y_1,30,p);
                 canvas.drawCircle(map_x_2,map_y_2,30,p);
                 canvas.drawCircle(map_x_3,map_y_3,30,p);
-
+            }
+            else if( (conut_putted_beacons==4)  )
+            {
+                canvas.drawCircle(map_x_1,map_y_1,30,p);
+                canvas.drawCircle(map_x_2,map_y_2,30,p);
+                canvas.drawCircle(map_x_3,map_y_3,30,p);
+                canvas.drawCircle(map_x_4,map_y_4,30,p);
+            }
+            else if( (conut_putted_beacons==5)  )
+            {
+                canvas.drawCircle(map_x_1,map_y_1,30,p);
+                canvas.drawCircle(map_x_2,map_y_2,30,p);
+                canvas.drawCircle(map_x_3,map_y_3,30,p);
+                canvas.drawCircle(map_x_4,map_y_4,30,p);
+                canvas.drawCircle(map_x_5,map_y_5,30,p);
                 assign_radius_and_set_circles();
-
                 draw_user(canvas);
             }
             else
@@ -476,6 +495,8 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
                 canvas.drawCircle(map_x_1,map_y_1,30,p);
                 canvas.drawCircle(map_x_2,map_y_2,30,p);
                 canvas.drawCircle(map_x_3,map_y_3,30,p);
+                canvas.drawCircle(map_x_4,map_y_4,30,p);
+                canvas.drawCircle(map_x_5,map_y_5,30,p);
                 Toast.makeText(getApplicationContext(), "有n個beacon就要改n個判斷_draw", Toast.LENGTH_SHORT).show();
                 draw_user(canvas);
             }
@@ -492,13 +513,16 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
         circle_1=new beacon_circle(map_x_1,map_y_1,3 );
         circle_2=new beacon_circle(map_x_2,map_y_2,4 );
         circle_3=new beacon_circle(map_x_3,map_y_3,5 );
+        circle_4=new beacon_circle(map_x_4,map_y_4,6 );
+        circle_5=new beacon_circle(map_x_5,map_y_5,7 );
 
-        engine.set_circles(circle_1,circle_2,circle_3);
+        //engine.set_circles(circle_1,circle_2,circle_3);
+        engine.set_circles(circle_1,circle_2,circle_3,circle_4,circle_5);
     }
 
     public void draw_user(Canvas canvas)
     {
-        if((user_pos_x!=-999) &&(user_pos_y!=-999))
+        if((user_pos_x >= 0) &&(user_pos_y >= 0))
         {
             p.setColor(Color.RED);
             canvas.drawCircle((float)user_pos_x,(float)user_pos_y,40,p);
