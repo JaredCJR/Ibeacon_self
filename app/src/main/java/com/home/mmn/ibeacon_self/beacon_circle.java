@@ -4,7 +4,7 @@ package com.home.mmn.ibeacon_self;
 public class beacon_circle extends circle_intersection_pos{
     private double pos_x=-1;
     private double pos_y=-1;
-    private double radius=-1;
+    private double radius=9999;
     private int minor=-1;
 
     beacon_circle()

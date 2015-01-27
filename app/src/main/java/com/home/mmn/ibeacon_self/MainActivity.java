@@ -134,6 +134,12 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+
+        for(int i =0;i<beacon_number;i++)
+        {
+            myIbeacon[i] = new beacon("erroe",1,-999,-59,-999,9999);
+        }
+
         Log.v("=====>", "Start onCreate");
         InitView();
 
@@ -156,6 +162,7 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
         while(stop_positioning == false)
         {
             stop_positioning = true;
+            next_positioning = true;
             Log.v("=====>", "Start infinite_positioning while");
 
             if(next_positioning)
@@ -163,12 +170,18 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
                 Log.v("=====>", "Start infinite_positioning if");
                 next_positioning = false;
 
+                /*new Handler().postDelayed(new Runnable(){
+                    public void run() {
+                        Log.v("=====>", "Start infinite_positioning postDelayed");
+                        find_beacon_thread();
+                    }
+                }, (1500*(loop_count-1))  );*/
                 new Handler().postDelayed(new Runnable(){
                     public void run() {
                         Log.v("=====>", "Start infinite_positioning postDelayed");
                         find_beacon_thread();
                     }
-                }, (1500*(loop_count-1))  );
+                }, 1500  );
             }
 
 
@@ -341,6 +354,7 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
 
                     if(find_beacon_number >2)
                     {
+                        Log.v("=====>", "start engine!");
                         engine.start_positioning(myIbeacon);//Strat positioning!
                         Log.v("=====>", "user_pos_x:"+engine.get_user_pos().get_x());
                         Log.v("=====>", "user_pos_y:"+engine.get_user_pos().get_y());
@@ -382,7 +396,7 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
 
 
                 }
-            }, (1250*(loop_count) ) );   //1.25秒
+            }, (1250 ) );   //1.25秒*(loop_count)
         }
     };
 
@@ -410,8 +424,6 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
         conut_putted_beacons++;
         show_Coordinate.setText("X: " + map_x + ", Y: " + map_y);
 
-
-
         if(conut_putted_beacons==1)
         {
             map_x_1=map_x;
@@ -426,6 +438,16 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
         {
             map_x_3=map_x;
             map_y_3=map_y;
+        }
+        else if(conut_putted_beacons==4)
+        {
+            map_x_4=map_x;
+            map_y_4=map_y;
+        }
+        else if(conut_putted_beacons==5)
+        {
+            map_x_5=map_x;
+            map_y_5=map_y;
         }
         else
         {
@@ -488,16 +510,6 @@ public class MainActivity extends ActionBarActivity implements View.OnTouchListe
                 canvas.drawCircle(map_x_4,map_y_4,30,p);
                 canvas.drawCircle(map_x_5,map_y_5,30,p);
                 assign_radius_and_set_circles();
-                draw_user(canvas);
-            }
-            else
-            {
-                canvas.drawCircle(map_x_1,map_y_1,30,p);
-                canvas.drawCircle(map_x_2,map_y_2,30,p);
-                canvas.drawCircle(map_x_3,map_y_3,30,p);
-                canvas.drawCircle(map_x_4,map_y_4,30,p);
-                canvas.drawCircle(map_x_5,map_y_5,30,p);
-                Toast.makeText(getApplicationContext(), "有n個beacon就要改n個判斷_draw", Toast.LENGTH_SHORT).show();
                 draw_user(canvas);
             }
         }

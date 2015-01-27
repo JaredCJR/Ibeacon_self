@@ -8,7 +8,7 @@ public class cross_pos_and_dist {//combination of calculated distance for two cr
     private double pos_y1=-1;
     private double pos_x2=-1;
     private double pos_y2=-1;
-    private double distance=-1;
+    private double distance=9999;
 
     cross_pos_and_dist()
     {

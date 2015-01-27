@@ -34,13 +34,18 @@ public class positioning_engine {
     {
         this.myIbeacon = Ibeacon;
         put_correct_radius_to_circles();
+        Log.v("=====>", "put_correct_radius_to_circles() finish!");
         //beacon_sort(myIbeacon);//Useful?
         beacon_circle_sort(circles);//Get the circles array according to their radius(px) in increasing
+        Log.v("=====>", "beacon_circle_sort(circles); finish!");
         circle_1 = sorted_circle[0];
         circle_2 = sorted_circle[1];
         circle_3 = sorted_circle[2];
+        Log.v("=====>", "circle_3 = sorted_circle[2] finish!");
         calc_all_cross_points(circle_1,circle_2,circle_3);
+        Log.v("=====>", "calc_all_cross_points(circle_1,circle_2,circle_3); finish!");
         get_critical_3_cross_points_and_user_position();
+        Log.v("=====>", "get_critical_3_cross_points_and_user_position(); finish!");
     }
 
     public void put_correct_radius_to_circles()
@@ -48,6 +53,8 @@ public class positioning_engine {
         //Assign radius to corresponding beacons(according to minor number).
         for(int i=0;i<beacon_number;i++)
         {
+            Log.v("=====>", "circles[0].get_minor() : "+circles[0].get_minor());
+            Log.v("=====>", "myIbeacon[i].get_minor()) : "+myIbeacon[i].get_minor() );
             if(circles[0].get_minor()==myIbeacon[i].get_minor())
             {
                 circles[0].set_r(myIbeacon[i].get_dist());
@@ -72,10 +79,10 @@ public class positioning_engine {
         mapping_meter_to_px();
     }
 
-    public beacon[] get_sorted_beacon()
+    /*public beacon[] get_sorted_beacon()
     {
         return sorted_beacon;
-    }
+    }*/
 
 
     public void set_circles(beacon_circle circle1,beacon_circle circle2,beacon_circle circle3,beacon_circle circle4,beacon_circle circle5)
@@ -93,7 +100,7 @@ public class positioning_engine {
             this.circles[i].set_r( ( circles[i].get_r()*200 ) );
     }
 
-
+/*
     //http://www.vogella.com/tutorials/JavaAlgorithmsQuicksort/article.html
     private beacon[] sorted_beacon;
     private int sorted_beacon_array_length;
@@ -154,7 +161,7 @@ public class positioning_engine {
         array[index1] = array[index2];      // copy the value of the second into the first
         array[index2] = temp;               // copy the value of the temp into the second
     }
-
+*/
 
     public void calc_all_cross_points(beacon_circle A,beacon_circle B, beacon_circle C)
     {
@@ -270,9 +277,7 @@ public class positioning_engine {
             {
                 if( ( sect_pos[i].get_x()==-9999 ) && ( sect_pos[i].get_y()==-9999  ) )
                 {
-
-                    sect_pos[i].set_x(last_time_sect_pos[i].get_x());
-                    sect_pos[i].set_y(last_time_sect_pos[i].get_y());
+                    sect_pos[i] = new circle_intersection_pos( last_time_sect_pos[i].get_x() ,last_time_sect_pos[i].get_y() );
                 }
             }
             catch (Exception ex)
@@ -391,14 +396,24 @@ public class positioning_engine {
 
         for(int i =0;i<6;i++)
         {
-            int z = 1;
+            int z = 0;
             while( ((i+z)<6) )
             {
                 if(  ( B[i].get_x() == B[i+z].get_x() )  &&  (B[i].get_y() == B[i+z].get_y() )  )
                 {
-                    critical_cross_point[w] = B[i];//copy the A[i] reference to critical_cross_point[w]  (meaning point to same memory)
-                    w++;
-                    z++;
+
+                    try
+                    {
+                        critical_cross_point[w] = B[i];//copy the A[i] reference to critical_cross_point[w]  (meaning point to same memory)
+                        w++;
+                        z++;
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.v("=====>", "Wrong Prediction!");
+                        Log.v("=====>", ex.getMessage());
+                    }
+
                     break;
 
                 }
@@ -441,13 +456,13 @@ public class positioning_engine {
         }
         sorted_circle = values;
         sorted_circle_array_length = values.length;
-        quicksort_beacon(0, sorted_circle_array_length - 1);
+        quicksort_circles(0, sorted_circle_array_length - 1);
     }
 
     private void quicksort_circles(int low, int high) {
         int i = low, j = high;
         // Get the pivot element from the middle of the list
-        beacon_circle pivot = sorted_circle[low + (high-low)/2];
+        beacon_circle pivot = sorted_circle[(low + (high-low)/2) ];
 
         // Divide into two lists
         while (i <= j) {
@@ -475,9 +490,9 @@ public class positioning_engine {
         }
         // Recursion
         if (low < j)
-            quicksort_beacon(low, j);
+            quicksort_circles(low, j);
         if (i < high)
-            quicksort_beacon(i, high);
+            quicksort_circles(i, high);
     }
 
 
