@@ -4,6 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/Ibeacon_self.iml" filepath="$PROJECT_DIR$/Ibeacon_self.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/ibeacon_background.iml" filepath="$PROJECT_DIR$/ibeacon_background.iml" />
     </modules>
   </component>
 </project>
